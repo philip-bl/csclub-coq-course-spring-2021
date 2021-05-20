@@ -64,10 +64,11 @@ Definition id :
 :=
   fun A : Type => fun x : A => x.
 
+Check id.
 (*| Here is how one would use `id`: |*)
 Compute id bool true.
 Compute id nat 42.
-
+Locate "+".
 (*| Notice that our identity function gets two
 arguments now to apply `id` to a computationally
 relevant terms (`true` and `42` above) we need to
@@ -133,7 +134,7 @@ reminder? |*)
 
 (*| mention why it is called 'product type' |*)
 Inductive prodn : Type := | pairn of nat & nat.
-
+Compute prodn.
 (*| `pairn of nat & nat` means that the `pairn`
 constructor holds two natural numbers |*)
 
@@ -215,7 +216,6 @@ indeed, Coq has the incredibly powerful mechanism
 of inferring *implicit arguments*. Here is how we
 active it for the identity function `id` and the
 `pair` data constructor: |*)
-
 Arguments id [A] _.
 Arguments pair [A B] _ _.
 
@@ -259,6 +259,7 @@ implicit arguments, this can be done like so: *)
 
 Set Printing Implicit.
 Check pair 42 true : prod nat bool.
+Check pair.
 Unset Printing Implicit.
 
 (*| The `Set ...` family of vernacular commands
@@ -376,7 +377,7 @@ one and have precedence over the rest of them. |*)
 
 Open Scope type_scope.
 Locate "*".
-Check (nat * nat).
+Check nat * nat.
 
 (*| Since notation scopes are modeled with a
 stack, closing a notation scope pops it off the
@@ -442,7 +443,10 @@ Definition fst {A B : Type} : A * B -> A :=
     match p with
     | (a, _) => a
     end.
+Check fst.
+Compute fst (1, false, 5).
 
+Print fst.
 (*| For now, let's think of `{A B : Type}` as `[A
 B : Type]`, i.e. `A` and `B` are declared as
 implicit parameters.
@@ -450,6 +454,10 @@ implicit parameters.
 If you are not sure what some notations in a
 definition mean, you can ask Coq to print it out
 without using notations like so: |*)
+
+Set Printing Implicit.
+Check fst.
+Unset Printing Implicit.
 
 Unset Printing Notations.
 Print fst.
@@ -494,6 +502,7 @@ programming is the sum type. This is also know as
 Inductive sum (A B : Type) : Type :=
   | inl of A
   | inr of B.
+Check inr.
 
 Notation "A + B" :=
   (sum A B) (at level 50, left associativity)
@@ -521,7 +530,6 @@ Definition swap_sum {A B : Type} :
     | inl a => inr B a
     | inr b => inl A b
     end.
-
 
 End MyNamespace.
 

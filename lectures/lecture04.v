@@ -17,6 +17,15 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+Axiom cheat : forall {A : Type}, A.
+
+Print void.
+Check Empty_set.
+Check Empty_set = void.
+Print Empty_set.
+
+Definition void_terminal (A : Type) : void -> A
+  := fun v => match v with end.
 
 (*|
 Injectivity of constructors
@@ -31,6 +40,10 @@ then we can prove the constructor components are
 that if the successors of two natural numbers are
 equal, then the numbers are equal themselves. |*)
 
+Locate ".+1".
+Locate ".-1".
+Print Nat.pred.
+
 Definition succ_inj (n m : nat) :
   n.+1 = m.+1 -> n = m
 :=
@@ -39,7 +52,7 @@ Definition succ_inj (n m : nat) :
       Sn_Sm in (_ = Sm)
       return (n = Sm.-1)
     with
-    | erefl => erefl n
+    | erefl => erefl
     end.
 
 (*| Since we can only substitute `n.+1` with
@@ -53,19 +66,23 @@ predecessor function does in the snippet above
 prove, for instance, the `or_introl` constructor
 is injective too. |*)
 
+Locate ":>".
+Variable A B : Prop.
+Variable p1 p2 : A.
+Check or_introl B p1.
+Check or_introl p1 = or_introl p2.
+Check or_introl p1 = or_introl p2 :> (A \/ B).
+
 Definition or_introl_inj (A B : Prop) (p1 p2 : A) :
   or_introl p1 = or_introl p2 :> (A \/ B) ->
   p1 = p2
 :=
-  fun eq =>
-    match
-      eq in (_ = oil2)
-      return (p1 =
-              if oil2 is or_introl p2' then p2' else p2)
-    with
-    | erefl => erefl p1
-    end.
-
+  fun eq => match eq
+                  in (_ = oil2)
+                  return (p1 = if oil2 is or_introl p2' then p2' else p2) (* wtf is this *)
+            with
+            | erefl => erefl p1
+            end.
 
 (*|
 Disjointness of constructors
@@ -76,6 +93,19 @@ Disjointness of constructors
 the `Type` universe, i.e. the computationally
 relevant terms, we can prove that distinct
 contructors are not propositionally equal. |*)
+Variable Foobar : Prop.
+Variable foobar : Foobar.
+
+Definition foo (n : nat) : S n = O -> False
+  := fun eq : S n = O =>
+       match eq with | erefl => foobar end. (* It works - haha WTF? *)
+
+Definition foo' (n : nat) : S n = O -> False
+  := fun eq : S n = O =>
+       match eq
+             in (_ = b)
+             return (if b is O then False else Foobar)
+       with | erefl => foobar end.
 
 Definition false_eq_true_implies_False :
   false = true -> False
@@ -117,7 +147,8 @@ In Coq, the `Prop` universe drops this feature to
 support classical reasoning. We are going to talk
 about this a bit more later. |*)
 
-Fail Definition or_introl_inj (A B : Prop) (p1 : A) (p2 : B) :
+
+Fail Definition or_introl_eq_or_intror_implies_False (A B : Prop) (p1 : A) (p2 : B) :
   or_introl p1 = or_intror p2 -> False
 :=
   fun eq =>
@@ -128,6 +159,20 @@ Fail Definition or_introl_inj (A B : Prop) (p1 : A) (p2 : B) :
     | erefl => I
     end.
 
+(* PHI: ok, but can I do this for sum which is basically the same as or? *)
+
+Locate "+".
+Print sum.
+Print or.
+Check or_introl.
+Check inl.
+
+Definition inl_eq_inr_implies_False (A B : Type) (a : A) (b : B) :
+  inl a = inr b -> False
+  := fun eq =>
+       match eq in (_ = oil2) return (if oil2 is inr b' then False else True)
+       with | erefl => I end.
+(* PHI: yes, it works. *)
 
 (*|
 Convoy pattern
@@ -139,12 +184,13 @@ inequality is irreflexive, i.e. `x <> x -> False`: |*)
 
 (*| First, we make a query on what `<>` means: |*)
 Locate "<>".
+Print not.
 
 Definition neq_irrefl A (x : A) :
   x <> x -> False
 :=
   fun neq_xx : x = x -> False =>
-    neq_xx erefl.
+    neq_xx erefl. (* PHI: `erefl` can be replaced with `(@erefl A x)` *)
 
 (*| Now we can try and prove that inequality is a
 symmetric relation. The type `x <> y -> y <> x`
@@ -165,6 +211,12 @@ Fail Definition neq_sym A (x y : A) :
       with
       | erefl => _
       end.
+
+(* PHI: let me try on my own *)
+Definition neq_sym' A (x y : A) : x <> y -> y <> x
+  := fun x_neq_y y_eq_x =>
+       x_neq_y (esym y_eq_x) : False.
+(* PHI: easy peasy *)
 
 (*| The problem here is that the `return`
 annotation does not contain the index `a` anywhere
@@ -246,6 +298,14 @@ Fail Definition addn0 :
     | S n' => congr1 S (_ : n' + 0 = n')
     end.
 
+(* PHI: my own try *)
+Fixpoint addn0'' (n : nat) : n + 0 = n
+  :=
+    match n with
+    | O => @erefl nat O
+    | S n' => congr1 S (addn0 n')
+    end.
+
 (*| The reason we got stuck here is that we lack a
 proof the same lemma but for the predecessor of
 `n`. Well, we can use recursion to get just that.
@@ -313,6 +373,8 @@ two subgoals:
 In type theory induction is just recursion!
 |*)
 
+(* PHI: I wonder if Coq can automatically prove the principle of induction-on-complexity
+   for all types *)
 
 (*| Here is yet another way of proving `addn0`
 where we factor out recursion and re-use
@@ -355,7 +417,7 @@ Definition addn' : nat -> nat -> nat :=
   @nat_rect
     (fun _ => nat -> nat)
     id
-    (fun _ pn => succn \o pn).
+    (fun _ pn => S \o pn).
 
 Check erefl : addn' 21 21 = 42.
 
@@ -383,7 +445,7 @@ Dependent pairs in `Prop` and `Type`
 |*)
 
 (*| Because of the issue of large elimination
-mentioned above, Coq has a several dependent pair
+mentioned above, Coq has several dependent pair
 types with components living in `Prop` or `Type`.
 |*)
 
@@ -391,6 +453,8 @@ types with components living in `Prop` or `Type`.
 existential quantifier. The type `ex` lives in the
 `Prop` universe and it is computationally
 irrelevant because of this. |*)
+(* PHI: what does computationally irrelevant mean? *)
+
 Print ex.
 
 (*| There is the `sig` type to emulate elements of
@@ -406,7 +470,7 @@ the `P` property is of type `A -> Prop`, it means
 the proofs, i.e. the second components of those
 pairs are computationally irrelevant and thus can
 be ignored at run-time. |*)
-
+Locate "{".
 (*| There is also the `sigT` type of dependent
 pairs of which both components are computationally
 relevant. |*)
@@ -448,6 +512,9 @@ approaches. |*)
 and return a natural number if the predessor of a number is
 defined and a term of type `unit` otherwise. |*)
 Definition Pred n := if n is S n' then nat else unit.
+Check Pred.
+Check unit.
+Check nat. (* PHI: why the fuck is nat a Set and not a Type? *)
 
 Check erefl : Pred 0 = unit.
 Check erefl : Pred 42 = nat.
@@ -455,6 +522,11 @@ Check erefl : Pred 42 = nat.
 (*| Here is out definition: |*)
 Definition predn_dep : forall n, Pred n :=
   fun n => if n is S n' then n' else tt.
+Check predn_dep.
+Print tt.
+Print True.
+Print nat.
+Locate nat.
 
 Check predn_dep 0 : unit.
 Check predn_dep 7 : nat.
@@ -466,6 +538,8 @@ Fail Check erefl : predn_dep 0 = 0.
 
 (*| Reminder: Type inference for dependent types
 is undecidable. |*)
+(* PHI: idk what the previous sentence means. In this particular case I guess it means
+        that Coq fails to derive the type of this function. *)
 Fail Check (fun n => if n is S n' then n' else tt).
 
 
@@ -475,7 +549,8 @@ let's just show one simple example for `sig` type.
 Below, the notation `{x : T | P x}` stands for
 `sig P`. Let's write yet another implementation of
 our beloved predecessor function. |*)
-
+Print sig.
+Compute predn.
 Definition pred (n : {x : nat | x != 0}) : nat :=
   match n with
   | exist x proof_x_neq_0 => predn x
@@ -483,13 +558,33 @@ Definition pred (n : {x : nat | x != 0}) : nat :=
 
 (*| To use `pred` function we must provide a
 number and a proof that it's not a zero. |*)
+Locate "!=".
+Print eq_op.
+Check 0 != 1.
+Compute 0 != 0.
+Check true : Prop.
+Check false : Prop.
+Compute 0 != true.
+(* PHI: ok, idk what eq_op is and how bool is coerced into a Prop *)
 Compute pred (exist (fun x => x != 0) 42 erefl).
-
+(* PHI: I don't fully understand the line above, so I'll try to desugar it
+   and make stuff more explicit *)
+Check eq_op 42 0.
+Compute eq_op 42 0.
+Check eq_op.
+Check @eq_op.
+Print eqType.
+Locate eqType.
+Check Equality.type = eqType.
+Print Equality.type.
+(* PHI: Ok, I give up trying to understand what the heck any of this is *)
+Compute pred (@exist nat (fun x : nat => negb (eq_op x  0)) 42 erefl).
 (*| Notice that we provide the predicate
 expressing that the input number is non-zero
 explicitly. Actually, Coq can infer this predicate
 if we ask to do it for us using an underscore: |*)
 Check erefl : pred (exist _ 42 erefl) = 41.
+Compute pred (exist _ 42 erefl).
 
 (*| Let's try and see what happens if we use `ex`
 instead of `sig` type |*)
@@ -501,3 +596,20 @@ Fail Definition pred_fail (n : exists x, x != 0) : nat :=
 use proofs to build data. And the reason behind
 this exact restriction we will learn later in the
 course. |*)
+
+(* PHI: do I understand correctly that I can convert sig to ex, but not vice versa? *)
+Variable T : Type.
+Variable P : T -> Prop.
+
+(* PHI: useful desugaring command: *)
+Set Printing All.
+
+(* PHI: or I can disable only notations: Unset Printing Notations. *)
+
+Variable exist_t_pt : @sig T P.
+Definition ex_t_pt : @ex T P
+  := match exist_t_pt with
+     | @exist _ _ t pt => @ex_intro T P t pt
+     end.
+
+(* PHI: yay, I can! *)

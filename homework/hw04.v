@@ -8,7 +8,8 @@ Unset Printing Implicit Defensive.
 Please replace it with your proof term. Your solutions may not
 use any axioms, including `replace_with_your_solution_here` *)
 Axiom replace_with_your_solution_here : forall {A : Type}, A.
-
+Axiom solved_by_phi_in_seminar03 : forall {A : Type}, A. (* PHI: see seminar03.v *)
+Axiom cheat : forall {A : Type}, A.
 
 (* WARNING!
  Since we import `eqtype` module which redefines `eq_refl` to mean something else
@@ -35,7 +36,7 @@ Axiom replace_with_your_solution_here : forall {A : Type}, A.
 
 Definition and_via_ex (A B : Prop) :
   (exists (_ : A), B) <-> A /\ B
-:= replace_with_your_solution_here.
+:= solved_by_phi_in_seminar03.
 
 
 (** * Exercise *)
@@ -54,7 +55,12 @@ Definition refl_if :
   (forall x y, R x y -> R y x) ->
   (forall x y z, R x y -> R y z -> R x z) ->
   forall x : D, (exists y, R x y) -> R x x
-:= replace_with_your_solution_here.
+  := fun Rsym Rtrans x ex =>
+       match ex with
+       | ex_intro y Rxy =>
+         Rtrans x y x Rxy (Rsym x y Rxy)
+       end.
+
 
 End Symmetric_Transitive_Relation.
 
@@ -62,7 +68,7 @@ End Symmetric_Transitive_Relation.
 (** * Exercise *)
 Definition pair_inj A B (a1 a2 : A) (b1 b2 : B) :
   (a1, b1) = (a2, b2) -> (a1 = a2) /\ (b1 = b2)
-:= replace_with_your_solution_here.
+:= solved_by_phi_in_seminar03.
 
 
 (** * Exercise *)
@@ -73,7 +79,7 @@ Inductive trilean : Type :=
 
 Definition yes_no_disj :
   Yes <> No
-:= replace_with_your_solution_here.
+  := fun Yes_eq_No => match Yes_eq_No with | erefl => I end.
 
 
 (** * Exercise *)
@@ -92,6 +98,9 @@ S (x' + (y + z)) = S ((x' + y) + z)
 
 (x' + (y + z))   =   ((x' + y) + z)
 *)
+Definition addA : associative addn
+:= solved_by_phi_in_seminar03.
+
 Check congr1.
 Definition addA : associative addn
  (* forall x y z : nat, x + (y + z) = x + y + z *)
@@ -119,7 +128,7 @@ Print Nat.add.
 
 (** * Exercise: *)
 Definition addnCA : left_commutative addn
-:= replace_with_your_solution_here.
+:= solved_by_phi_in_seminar03.
 
 (* Hint: re-use addnS lemma and some general lemmas about equality *)
 
@@ -135,12 +144,12 @@ Definition J :
   forall (A : Type) (P : forall (x y : A), x = y -> Prop),
     (forall x : A, P x x erefl) ->
     forall x y (p : x = y), P x y p
-:= replace_with_your_solution_here.
+:= solved_by_phi_in_seminar03.
 
 
 (** * Exercise (optional): *)
 Definition addnC : commutative addn
-:= replace_with_your_solution_here.
+:= solved_by_phi_in_seminar03.
 
 
 (** * Exercise (optional):
@@ -149,9 +158,9 @@ Formalize and prove
  - A + B ≡ {b : bool & if b then A else B},
  - A * B ≡ forall b : bool, if b then A else B,
 where ≡ means "is isomorphic to".
- *)
+ *) (* PHI: solved by me in seminar03 *)
 
 (** * Exercise (optional): *)
 Definition unit_neq_bool:
   unit <> bool
-:= replace_with_your_solution_here.
+:= solved_by_phi_in_seminar03.

@@ -133,6 +133,8 @@ Definition andC (A B : Prop) :
     | conj pA pB => conj pB pA
     end.
 
+(* Phi: I wonder, is an object x : A supposed to be a proof of A or just the positive truth value of A? *)
+
 (*| Have you noticed that the proof of `A /\ B ->
 B /\ A` looks the same (modulo contructor names)
 as the function that swaps the two components of a
@@ -152,10 +154,11 @@ disjunction: |*)
 Inductive or (A B : Prop) : Prop :=
   | or_introl of A
   | or_intror of B.
-
+(* Phi: this look sound but incomplete. Nvm, forallx nat deduction has the same rule for disj intro. *)
+(* Phi: how do I prove A \/ ¬A? *)
 Notation "A \/ B" := (or A B) : type_scope.
 Arguments or_introl [A] B _, [A B] _.
-Arguments or_intror [A] B _, [A B] _.
+Arguments or_intror A [B] _, [A B] _. (* phi: originally there was a typo here *)
 
 (*| Again, notice the strong resemblance between [or]
 and [sum] types:
@@ -171,7 +174,7 @@ the `Prop` universe and `sum` inhabits `Type`. |*)
 
 Definition and_or_distr (A B C : Prop) :
   (A \/ B) /\ C -> (A /\ C) \/ (B /\ C)
-:= fun '(conj paob pc) =>
+:= fun '(conj paob pc) => (* this weird syntax is pattern matching *)
      match paob with
      | or_introl pa => or_introl (conj pa pc)
      | or_intror pb => or_intror (conj pb pc)
@@ -193,13 +196,15 @@ Inductive True : Prop :=
   | I.
 
 (*| A couple simple examples |*)
-Definition anything_implies_True (A : Prop) :
-  A -> True
-:= fun _ => I.
+Definition anything_implies_True (A : Prop) : A -> True := fun _ => I.
 
 Definition True_and_True :
   True /\ True
 := conj I I.
+
+Definition True_and_True_implies_True :
+  True /\ True -> True
+  := fun '(conj l r) => l.
 
 (*|
 Falsehood
@@ -233,6 +238,7 @@ that falsehood implies anything: |*)
 Definition exfalso_quodlibet {A : Prop} :
   False -> A
 := fun pF : False => match pF with end. (* no branches *)
+
 
 (*| One more simple example: |*)
 Definition a_or_false_implies_a (A : Prop) :
@@ -313,9 +319,38 @@ predicate, i.e. a function from some type into
 
 Here is a simple example: |*)
 
+(* PHI: my code that tries to clarify stuff *)
+Module PhiTestNamespace01.
+Variable A : Type.
+Variable B : Type.
+Variable P : A -> Prop.
+Check forall x : A, P x.
+Check forall x, P x.
+(* Definition foo := forall x, P x. *)
+(* Variable a : A. *)
+(* Fail Check foo a. *)
+
+(* PHI: ok, I need to remember what the fuck forall is *)
+Definition foo : forall A : Type, forall a : A, A + A + A
+  := fun B : Type => fun b : B => inr (B + B) b.
+(* PHI: so, forall is simply π-product (or whatever that thing is called) *)
+Definition bar : forall A : Type, forall B : Type, forall C : Type, forall a : A, A + B + C
+  := fun A => fun B => fun C => fun a => inl C (inl B a).
+Definition succ : forall n : nat, nat := fun n => S n.
+
+Compute forall x : A, P x /\ P x.
+Compute forall A : Type, forall B : Type, forall C : Type, forall a : A, A + B + C.
+
+Variable S : Prop.
+Variable T : Prop.
+Compute forall s : S, T.
+Compute forall a : A, P a.
+
+End PhiTestNamespace01.
+
 Definition forall_andD (A : Type) (P Q : A -> Prop) :
-  (forall x, P x /\ Q x) ->
-  (forall x, P x) /\ (forall x, Q x)
+  (forall x : A, P x /\ Q x) ->
+  (forall x : A, P x) /\ (forall x : A, Q x)
 := fun all_pq =>
      conj
        (fun x => match all_pq x with conj px _ => px end)
@@ -338,12 +373,32 @@ second component may depend on the *value* of the
 first component. |*)
 
 Inductive ex (A : Type) (P : A -> Prop) : Prop :=
-  | ex_intro (x : A) (proof : P x).
+| ex_intro (x : A) (proof : P x).
 
 (*| Simplified notation |*)
 Notation "’exists’ x : A , P" :=
   (ex (fun x : A => P))
     (at level 200, right associativity).
+
+Module PhiTestNamespace02.
+Variable A : Type.
+Variable P : A -> Prop.
+Check @ex A P.
+Fail Check @ex P.
+Check ex P.
+Fail Check ex A P.
+Check ex_intro.
+Check @ex_intro A.
+Check @ex_intro A P.
+Variable x : A.
+Check P x.
+Check @ex_intro A P x.
+Check ex_intro P x.
+Variable proof_of_P_x : P x.
+Check @ex_intro A P x proof_of_P_x.
+Check exists y, P y.
+Check forall (x : A) , ~ P x.
+End PhiTestNamespace02.
 
 (*| Full-blown notation: multiple binders |*)
 Notation "'exists' x .. y , p" :=
@@ -354,7 +409,7 @@ Notation "'exists' x .. y , p" :=
 
 (*| Here is a simple example of reasoning with the
 existential quantifier: |*)
-Definition exists_not_forall A (P : A -> Prop) :
+Definition exists_not_forall (A : Type) (P : A -> Prop) :
   (exists x, P x) -> ~ (forall x, ~ P x)
 :=
   fun x_px : exists x, P x =>
@@ -363,8 +418,24 @@ Definition exists_not_forall A (P : A -> Prop) :
       | ex_intro x px => all_npx x px
       end.
 
+(* PHI: let's desugar that stuff *)
+Definition exists_not_forall' :
+  forall A : Type,
+  forall P : A -> Prop,
+  forall x_px : @ex A P,
+  forall all_npx : (forall (x : A), P x -> False),
+    False
+  := fun A => fun P => fun x_px => fun all_npx => match x_px with
+     | ex_intro x px => all_npx x px
+     end.
+
+(* PHI: now, let's resugar that stuff in a way I like *)
+Definition exists_not_forall'' (A : Type) (P : A -> Prop) (x_px : ex P) (all_npx : forall x, ~ P x) : False
+  := match x_px with | ex_intro x px => all_npx x px end.
+                                                         
 (*| Currying for dependent pairs: |*)
-Definition curry_dep A (P : A -> Prop) Q :
+
+Definition curry_dep A (P : A -> Prop) (Q : Prop) :
   ((exists x, P x) -> Q) -> (forall x, P x -> Q)
 :=
   fun f : (exists x, P x) -> Q =>
@@ -372,6 +443,9 @@ Definition curry_dep A (P : A -> Prop) Q :
       fun px : P x =>
         f (ex_intro P x px).
 
+Definition curry_dep' (A : Type) (P : A -> Prop) (Q : Prop) (f : ex P -> Q) (x : A) (px : P x) : Q
+  := f (ex_intro P x px).
+                                                                                                   
 
 (*|
 Equality
@@ -411,8 +485,15 @@ equality. This is going to be our first encounter
 of *indexed* types. |*)
 
 Inductive eq (A : Type) (x : A) : A -> Prop :=
-  | eq_refl : eq x x.
+| eq_refl : @eq A x x. (* I don't fully understand this def *)
 
+Check eq.
+
+Check eq_refl. (* I don't understand why eq has this type signature *)
+Check @eq_refl nat.
+Check @eq_refl nat 3.
+Fail Check eq_refl nat 3.
+Check eq_refl 3.
 (*| The only notion of equality we are putting in
 is *reflexivity*.
 
@@ -433,6 +514,7 @@ and there are no other terms of type `A` except
 the `eq` type. |*)
 Notation "x = y" := (eq x y) : type_scope.
 
+Check eq_refl.
 Arguments eq_refl {A x}, {A} x.
 
 (*| We are going to use `eq_refl` as the proof
@@ -442,10 +524,11 @@ that are equal modulo :math:`\beta`- and
 :math:`\iota`- reduction are propositionally equal
 (because those are equal definitionally too). |*)
 
-Check eq_refl 0 : 0 = 0.
+Check eq_refl 0.
 Check eq_refl : 0 = 0.
 Check eq_refl : (fun _ => 0) 42 = 0.
 Check eq_refl : 2 + 2 = 4.
+Check eq_refl : 360 + 540 = 900.
 
 (*| The following does not work because here one
 can either build terms like `eq_refl 0` (or type
@@ -470,7 +553,6 @@ Check eq_refl : (fun x => x) = (fun y => y).
 uniqueness principle in this case it means 'every
 element of a function type is a function'. |*)
 Check eq_refl : (fun x => f x) = f.
-
 
 (*| Let's prove propositional equality is an
 equivalence relation, i.e. reflexive, symmetric
@@ -498,6 +580,15 @@ Definition eq_sym_unannotated A (x y : A) :
     | eq_refl => (eq_refl x : x = x)  (* notice the type here *)
     end) : y = x.                     (* and here *)
 
+(* PHI: how does the above work? let's figure out *)
+Module PhiTestNamespace03.
+  Variable A : Type.
+  Variable x y : A.
+  Variable pf : x = y.
+  Check (match pf with | eq_refl => eq_refl x end).
+  Check (match pf with | eq_refl => eq_refl x end) : x = y.
+End PhiTestNamespace03.
+
 (*| To understand the magic above one needs to use
 the fully annotated version of the
 `match`-expression. This time we need to add the
@@ -511,6 +602,19 @@ variables are going to be rewritten in the
 branches of `match`-expressions according to the
 definition of the (indexed) inductive type. |*)
 
+Module PhiTestNamespace04.
+  Variable A : Type.
+  Variable x y : A.
+  Variable pf : x = y.
+  Check match pf with | eq_refl => (eq_refl x : x = x) end. (* : x = x *)
+  Check (match pf with | eq_refl => (eq_refl x : x = x) end) : y = x. (* : y = x *)
+  Fail Check (match pf with | eq_refl => (eq_refl x : x = y) end).
+  Fail Check (match pf with | eq_refl => (eq_refl x : y = x) end).  
+  Check match pf in _ = b return b = x with | eq_refl => eq_refl x end. (* : y = x *)
+  Check match pf in _ = b return x = x with | eq_refl => eq_refl x end. (* : x = x *)
+  Check match pf in _ = b return b = b with | eq_refl => eq_refl x end. (* : y = y *)
+End PhiTestNamespace04.
+
 Definition eq_sym A (x y : A) :
   x = y -> y = x
 := fun (pf  : x = y) =>
@@ -521,7 +625,20 @@ Definition eq_sym A (x y : A) :
      | eq_refl => eq_refl x
      end.
 
+(* PHI: let's try this weird match in return with end thing on something else *)
+Module PhiTestNamespace04.
+  Inductive foo := | foo1 | foo2.
+  Variable A : Type.
+  Variable x y : A.
+  Variable bar : foo.
+  Check match bar in foo return A with
+        | foo1 => x
+        | foo2 => y
+        end.
+End PhiTestNamespace04.
+
 (*| Using the annotated version of the `match`-expression we can prove `eq` is transitive. Thus, we have established `eq` is an equivalence relation |*)
+
 Definition eq_trans A (x y z : A) :
   x = y -> y = z -> x = z
 :=
@@ -533,4 +650,6 @@ Definition eq_trans A (x y z : A) :
     | eq_refl => fun (pf_xz : x = z) => pf_xz
     end.
 
+(* PHI: I didn't really understand eq_sym_unannotated, eq_sym, eq_trans *)
 End MyNamespace.
+

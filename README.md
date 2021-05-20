@@ -67,5 +67,6 @@
 
 ## Awesome exercise solutions by class participants
 
+- This repo ([https://github.com/philip-bl/csclub-coq-course-spring-2021](https://github.com/philip-bl/csclub-coq-course-spring-2021)) contains Philip's solutions
 - `unit_neq_bool` [solution and generalization](https://gist.github.com/kana-sama/11acc3e66d72f5203faddf403fbbaa4d) by @kana-sama
 - A compiler from a language of arithmetic expressions to a stack language: [solution and generalization](https://gist.github.com/kana-sama/dfda1465dae66e65a3fe9e466462bf18) by @kana-sama
